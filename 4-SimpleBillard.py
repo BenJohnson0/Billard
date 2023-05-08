@@ -29,10 +29,13 @@ for k,v in data.items():
 
 print("Calibraton Data:", data)
 
-############### Configuration Fenetre ###############
+############### Configuration Fenetre/ Configuration Window ###############
+
+#set name and properties for the configuration window
 cv2.namedWindow("Billard", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("Billard", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN) #, cv2.WINDOW_NORMAL, cv2.WINDOW_NORMAL) #
 
+#set configuration to either debug or the given camera number
 if os.path.isfile('debug.mp4'):
     cap = cv2.VideoCapture('debug.mp4')
 else:
@@ -72,6 +75,7 @@ cap.release()"""
 
 ret, frame = cap.read()
 l, h ,c = frame.shape
+#cadre => frame
 cadre = (1920, 1080)
 print(l,h)
 
@@ -83,22 +87,33 @@ draw_options = pymunk.pygame_util.DrawOptions(screen)
 """
 
 
-##### Moteur Physique #####
+##### Moteur Physique/ Physics engine#####
+
 space = pymunk.Space()
 space.gravity = (0, 0)
 
 # Edge of billard:
+#defines and adds the edges of the billard table to the physics engine using the pymunk library
+
+#initializes a static body, won't move during the simulation 
 body = space.static_body
+
+#sets it to the top left corner of the billard table
 body.position = (0, 0)
+
+#adds all corners of the table to the lEdges list
 lEdges = [pymunk.Segment(body, (0, 0), (cadre[0], 0), 10),
           pymunk.Segment(body, (cadre[0], 0), (cadre[0], cadre[1]), 1),
           pymunk.Segment(body, (cadre[0], cadre[1]), (0, cadre[1]), 1),
           pymunk.Segment(body, (0, cadre[1]), (0, 0), 1)
 ]
+
+#sets the elasticity and friction for the edges in the list
 for edge in lEdges:
     edge.elasticity = 0.95
     edge.friction = 0 ## 0.1
 
+#adds all the edges to the physics engine
 space.add(*lEdges)
 
 
@@ -108,27 +123,42 @@ class Ball:
     scoreLimit = 0.90
     pointLimit = 15 # points
     lBall=[]
+
+    #unique ids for each ball instance
     id_count=0
+
     radius = 27
     mass = 111
     deceleration = 26
-    memory = 10 # Le nombre de point utiliser pour les calcules
+    memory = 10 # Le nombre de point utiliser pour les calcules/ amount of points used in calculations
+    
+    #maximum number of balls allowed 
     max_ball = 20
+    
+    #set of available ball ids that can be assigned
     sId_available = set(range(max_ball))
 
+    #constructor
+    #x,y initial position of the balls
+    #t current time
     def __init__(self, t, x, y):
 
-
         global space, t_physic_engine
+
+        #list of all the instances of ball class created
         Ball.lBall+=[self]
+
         self.lPos = [[t, x, y]]
         self.lPos_prediction = [[t_physic_engine, x, y]]
+
+        #vitesse => speed
         self.lVitesse = [[t, 0, 0, 0]]  # [[t, dx, dy, v]]
         self.lVitesse_prediction = [[t_physic_engine, 0, 0, 0]]
         self.polynome_distance = poly.Polynomial([0])
 
         self.debut_simulation = 0
 
+        #chemin => path
         self.lChemin = []
         self.lVt1 = []
         self.lVt2 = []
@@ -171,6 +201,7 @@ class Ball:
 
 
 
+    #this method calculates the friction and updates the velocity of the balls
     def static_friction(self, body, gravity, damping, dt):
     
         pymunk.Body.update_velocity(body, gravity, damping, dt)
@@ -192,7 +223,7 @@ class Ball:
         
         self.debut_simulation += dt
 
-
+    #destructor
     def __del__(self):
 
         global space
@@ -201,7 +232,8 @@ class Ball:
         Ball.lBall.remove(self)
         del self
 
-
+    #calculates the new position and velocity of the balls after a certain time
+    #dt time difference
     def interpolation(self, dt):
         tv, dx, dy, v = self.lVitesse[-1]
         t, x, y = self.lPos[-1]
@@ -222,7 +254,9 @@ class Ball:
         vy = dy*v
         return px, py, vx, vy, v
 
-
+    # adds a position to the list of positions of balls
+    # x,y new positions of the ball
+    # t current time
     def add_pos(self, t, x, y):
         
         global space, t_physic_engine
@@ -236,6 +270,7 @@ class Ball:
 
 
         # Limite le nombre de donné pour notre prédiction
+        #=> Limit the number of data for the prediction
         aAverage = np.array(self.lPos[-Ball.memory+1:] + [[t, x, y]])
         
         self.lPos += [list(np.average(aAverage,
@@ -261,10 +296,19 @@ class Ball:
         [[dx],[dy],[cx],[cy]] = cv2.fitLine(np.array([[[x,y]] for t,x,y in lFitting_pos]), cv2.DIST_L2, 0, 0.01, 0.01)
 
         # Déduit le sens:
+        #determine the direction
+
+
+        #calculates the distance between three points 
         p0 = np.array(lFitting_pos[-2][1:3])
+
+        #10 times the direction vector away from the center [cx, cy] 
         p1 = np.array([cx+10*dx, cy+10*dy])
+
+        #-10 times the direction vector away from the center [cx, cy] 
         p2 = np.array([cx-10*dx, cy-10*dy])
 
+        #calculates the euclidian distances between 
         d1 = np.linalg.norm(p0-p1)
         d2 = np.linalg.norm(p0-p2)
 
@@ -400,6 +444,18 @@ Largeur image: 1920 px
 RayonMinimal = VitesseMaximaleBoule / FPS / LargeurBillard * LargeurImage
  = 12,5 / 30 / 3,6 * 1920
  = 
+"""
+
+
+"""
+=>
+Maximum ball speed: 12.5 m/s
+FPS: 30fps
+Billiard width: 3.6 m
+Image width: 1920 px
+
+MinimumRadius = MaximumBallSpeed / FPS / PoolWidth * ImageWidth
+  = 12.5 / 30 / 3.6 * 1920
 """
 
 _, frame = cap.read()
