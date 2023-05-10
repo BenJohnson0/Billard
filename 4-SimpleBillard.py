@@ -29,7 +29,7 @@ for k,v in data.items():
 
 print("Calibraton Data:", data)
 
-############### Configuration Fenetre/ Configuration Window ###############
+############### Configuration Fenetre/ translation=> Configuration Window ###############
 
 #set name and properties for the configuration window
 cv2.namedWindow("Billard", cv2.WND_PROP_FULLSCREEN)
@@ -87,7 +87,7 @@ draw_options = pymunk.pygame_util.DrawOptions(screen)
 """
 
 
-##### Moteur Physique/ Physics engine#####
+##### Moteur Physique/ translation => Physics engine#####
 
 space = pymunk.Space()
 space.gravity = (0, 0)
@@ -130,7 +130,7 @@ class Ball:
     radius = 27
     mass = 111
     deceleration = 26
-    memory = 10 # Le nombre de point utiliser pour les calcules/ amount of points used in calculations
+    memory = 10 # Le nombre de point utiliser pour les calcules/ translation => amount of points used in calculations
     
     #maximum number of balls allowed 
     max_ball = 20
@@ -151,14 +151,14 @@ class Ball:
         self.lPos = [[t, x, y]]
         self.lPos_prediction = [[t_physic_engine, x, y]]
 
-        #vitesse => speed
+        #vitesse => translation => speed
         self.lVitesse = [[t, 0, 0, 0]]  # [[t, dx, dy, v]]
         self.lVitesse_prediction = [[t_physic_engine, 0, 0, 0]]
         self.polynome_distance = poly.Polynomial([0])
 
         self.debut_simulation = 0
 
-        #chemin => path
+        #chemin translation => path
         self.lChemin = []
         self.lVt1 = []
         self.lVt2 = []
@@ -270,7 +270,7 @@ class Ball:
 
 
         # Limite le nombre de donné pour notre prédiction
-        #=> Limit the number of data for the prediction
+        #  translation => Limit the number of data for the prediction
         aAverage = np.array(self.lPos[-Ball.memory+1:] + [[t, x, y]])
         
         self.lPos += [list(np.average(aAverage,
@@ -296,7 +296,7 @@ class Ball:
         [[dx],[dy],[cx],[cy]] = cv2.fitLine(np.array([[[x,y]] for t,x,y in lFitting_pos]), cv2.DIST_L2, 0, 0.01, 0.01)
 
         # Déduit le sens:
-        #determine the direction
+        # translation => determine the direction
 
 
         #calculates the distance between three points 
@@ -392,7 +392,8 @@ class Ball:
             self.lVt1 = []
             self.lVt2 = []
     
-
+    #this method maps balls to already existing objects or creates new ball objects if no match is found
+    #it also handles some cleanup by removing outdated ball objects based on a time threshold
     @classmethod
     def mapping_detecting_balls(cls, t, lDetected_ball):
 
@@ -448,7 +449,7 @@ RayonMinimal = VitesseMaximaleBoule / FPS / LargeurBillard * LargeurImage
 
 
 """
-=>
+translation =>
 Maximum ball speed: 12.5 m/s
 FPS: 30fps
 Billiard width: 3.6 m
@@ -464,9 +465,11 @@ prevframe = frame[:,:,:] #frame[:,:,2]    #First frame
 prevframe = cv2.warpPerspective(prevframe, m_camera2screen, (1920,1080), flags=cv2.INTER_LINEAR)
 cv2.imshow('Billard', prevframe)
 
+#reads background.jpg as image and sets the background to only the blue channel (the last parameter)
 background = cv2.imread("background.jpg")[:,:,2]
 background = cv2.warpPerspective(background, m_camera2screen, (1920,1080), flags=cv2.INTER_LINEAR)
 
+# fond translation => background
 fond = cv2.imread("FondDVIC.png")
 
 debut_time = time.time()
@@ -527,6 +530,7 @@ while True:
         ecartype = np.std([((x-ix)**2 + (y-iy)**2)**0.5 for ix, iy in zip(lX, lY)])
 
         # ça ressemble à un cercle ?
+        # translation => does it resemble a circle?
         if ecartype < 10:
             #Ball.add_ball(t_frame, x, y)
             #cv2.circle(newframe, (x, y), 50, (255, 255, 255), 10)
