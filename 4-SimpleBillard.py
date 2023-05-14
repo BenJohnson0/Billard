@@ -488,14 +488,20 @@ while True:
     nextframe = frame[:,:,2].copy()
     #frame = cv2.warpPerspective(frame, m_camera2screen, (1920,1080), flags=cv2.INTER_LINEAR)
     
+    #use warpPerspective on nextframe to map it to a 1920x1080 resolution
     nextframe = cv2.warpPerspective(nextframe, m_camera2screen, (1920,1080), flags=cv2.INTER_LINEAR)
+    
+    #compute absolute difference between the background and "nextframe"
     nextframe = cv2.absdiff(background, nextframe)
 
+    #apply gaussian blur to the image
     nextframe = cv2.GaussianBlur(nextframe,(5,5),0)
     
+    #set threshold of image to 100, creating a binary image (transforming it into a black and white image)
     _, nextframe = cv2.threshold(nextframe, 100, 255, cv2.THRESH_BINARY)
     
     contours, hierarchy = cv2.findContours(nextframe, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
 
     newframe = fond.copy() # np.zeros(frame.shape)
 
@@ -506,12 +512,15 @@ while True:
         M = cv2.moments(c)
 
         # Surface trop petite ?
+        #translation => is the area too small?// if the area of the countour is too small, skip it
         if M["m00"]<np.pi*25**2:
             continue
 
         lX=[x for [[x, _]] in c]
         lY=[y for [[_, y]] in c]
         
+        #check correlation coeffient of x and y, if it is greater than 0.75, it's most likely a straight line
+        #fit a line to the contour using cv2.fitline and draw it in the next frame
         if np.corrcoef(lX, lY)[0, 1]**2 > 0.75:
             [vx,vy,x,y] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
             cv2.line(
@@ -525,12 +534,15 @@ while True:
             #cv2.line(nextframe, (0, int(np.polyval(p, 0))), (1920, int(np.polyval(p, 1920))), 150, 20)
             continue
         
+        # if it doesn't resemble a straight line, calculate the standard deviation of of the distances
         x = int(M["m10"] / M["m00"])
         y = int(M["m01"] / M["m00"])
+        # translation ecartype => standard deviation 
         ecartype = np.std([((x-ix)**2 + (y-iy)**2)**0.5 for ix, iy in zip(lX, lY)])
 
         # ça ressemble à un cercle ?
         # translation => does it resemble a circle?
+        # if it resembles a circle, at it to the list of detected ball positions
         if ecartype < 10:
             #Ball.add_ball(t_frame, x, y)
             #cv2.circle(newframe, (x, y), 50, (255, 255, 255), 10)
@@ -541,7 +553,6 @@ while True:
 
 
     for ball in Ball.lBall:
-
         x, y, vx, vy, v = ball.interpolation((time.time() - t_prediction) + 0.4)
         x, y = int(x), int(y)
         zoom = 0.7
@@ -557,15 +568,18 @@ while True:
                  200,
                  5)"""
 
+        #put circle on newframe representing the balls 
         cv2.circle(newframe, (x, y), 50, (255, 255, 255), 10)
 
+        #if velocity is greater than 0
         if v > 0:
+            #draw an arrowed line on where the ball is supposed to move
             cv2.arrowedLine(newframe,
-                            (int(x), int(y)),
-                            (int(x+vx*zoom), int(y+vy*zoom)),
+                            (int(x), int(y)),                   #starting position
+                            (int(x+vx*zoom), int(y+vy*zoom)),   #ending position
                             (255, 255, 255),
                             10)
-
+            #chemin translation => path
             if len(ball.lChemin)>=2:
                 pts = np.array(ball.lChemin + ball.lVt1[::-1],
                           np.int32).reshape((-1, 1, 2))
