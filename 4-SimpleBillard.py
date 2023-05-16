@@ -257,20 +257,18 @@ class Ball:
     # adds a position to the list of positions of balls
     # x,y new positions of the ball
     # t current time
-    def add_pos(self, t, x, y):
-        
+    def add_pos(self, t, x, y):       
         global space, t_physic_engine
         # Le déplacement est-il suffisant ?
+        # translation -> is the displacement enough?
         if len(self.lPos)>=1:
             _, x1, y1 = self.lPos[-1]
             d = ((x1 - x)**2 + (y1 - y)**2)**0.5
             if d<10:
                 _, x, y = self.lPos[-1]
 
-
-
         # Limite le nombre de donné pour notre prédiction
-        #  translation => Limit the number of data for the prediction
+        # translation => Limit the number of data for the prediction
         aAverage = np.array(self.lPos[-Ball.memory+1:] + [[t, x, y]])
         
         self.lPos += [list(np.average(aAverage,
@@ -298,7 +296,6 @@ class Ball:
         # Déduit le sens:
         # translation => determine the direction
 
-
         #calculates the distance between three points 
         p0 = np.array(lFitting_pos[-2][1:3])
 
@@ -317,6 +314,7 @@ class Ball:
             dy *= -1
 
         # Projection sur l'axe de la direction:
+        # translation -> Projection on the steering axis
         aFitting_pos = np.array(lFitting_pos)
         lT = aFitting_pos[:,0]
         lXY = aFitting_pos[:,1:3]
@@ -326,6 +324,7 @@ class Ball:
         t_mean = (lT[-1] + lT[0])/2
 
         # Interpolation polynomiale de l'avancement:
+        # translation -> Polynomial interpolation of the advancement
         coefs = poly.polyfit(lT, lDistance, 2)
         
         pd = poly.Polynomial(coefs)
@@ -338,10 +337,12 @@ class Ball:
         acc = pa(t_mean)
         
         # Limiter les vitesses trop petite:
+        # translation -> check if speeds are too low
         if v<15:
             vx, vy, v = 0, 0, 0
         
         # Limiter les vitesses trop petite:
+        # translation -> check if speeds are too high
         if abs(acc)<1:
             acc = 0
 
@@ -512,15 +513,15 @@ while True:
         M = cv2.moments(c)
 
         # Surface trop petite ?
-        #translation => is the area too small?// if the area of the countour is too small, skip it
+        # translation => is the area too small?// if the area of the countour is too small, skip it
         if M["m00"]<np.pi*25**2:
             continue
 
         lX=[x for [[x, _]] in c]
         lY=[y for [[_, y]] in c]
         
-        #check correlation coeffient of x and y, if it is greater than 0.75, it's most likely a straight line
-        #fit a line to the contour using cv2.fitline and draw it in the next frame
+        # check correlation coeffient of x and y, if it is greater than 0.75, it's most likely a straight line
+        # fit a line to the contour using cv2.fitline and draw it in the next frame
         if np.corrcoef(lX, lY)[0, 1]**2 > 0.75:
             [vx,vy,x,y] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
             cv2.line(
@@ -542,6 +543,7 @@ while True:
 
         # ça ressemble à un cercle ?
         # translation => does it resemble a circle?
+
         # if it resembles a circle, at it to the list of detected ball positions
         if ecartype < 10:
             #Ball.add_ball(t_frame, x, y)
@@ -568,18 +570,18 @@ while True:
                  200,
                  5)"""
 
-        #put circle on newframe representing the balls 
+        # put circle on newframe representing the balls 
         cv2.circle(newframe, (x, y), 50, (255, 255, 255), 10)
 
-        #if velocity is greater than 0
+        # if velocity is greater than 0
         if v > 0:
-            #draw an arrowed line on where the ball is supposed to move
+            # draw an arrowed line on where the ball is supposed to move
             cv2.arrowedLine(newframe,
                             (int(x), int(y)),                   #starting position
                             (int(x+vx*zoom), int(y+vy*zoom)),   #ending position
                             (255, 255, 255),
                             10)
-            #chemin translation => path
+            # chemin translation => path
             if len(ball.lChemin)>=2:
                 pts = np.array(ball.lChemin + ball.lVt1[::-1],
                           np.int32).reshape((-1, 1, 2))
@@ -590,6 +592,7 @@ while True:
                                     [[ball.lVt1[-1][0]+vdx, ball.lVt1[-1][1]+vdy]] +
                                     [[ball.lVt2[-1][0]+vdx, ball.lVt2[-1][1]+vdy]] +
                                      ball.lVt2[::-1], np.int32).reshape((-1, 1, 2))
+                # fill polygon defined by vitesse (-> speed) with blue color (cv2 uses BGR instead of RGB)
                 cv2.fillPoly(newframe, [vitesse], (255, 0, 0))
                 cv2.polylines(newframe, [vitesse], True, (0, 0, 255), 2)
                 
@@ -600,17 +603,22 @@ while True:
                 vu = np.array(ball.lVt1[0]) - np.array(ball.lChemin[0])
                 vu /= np.linalg.norm(vu)
                 s=55
+
+                #draws a line on newframe representing the direction of the ball's movement
                 cv2.arrowedLine(newframe,
                                 tuple(map(int, ball.lChemin[0])),
                                 tuple(map(int, np.array(ball.lChemin[0]) + vu*s)),
                                 (255, 255, 255),
                                 2)
+                
+                #draws another line on newframe, but this time the endpoint is calculated by subtracting vu*s instead of adding it, resulting in the arrow pointing the opposite direction
                 cv2.arrowedLine(newframe,
                                 tuple(map(int, ball.lChemin[0])),
                                 tuple(map(int, np.array(ball.lChemin[0]) - vu*s)),
                                 (255, 255, 255),
                                 2)
 
+                #adds text to newframe, showing the speed of the ball
                 cv2.putText(newframe,
                             "Speed(px/s)",
                             tuple(map(int, ball.lChemin[1])),
@@ -622,6 +630,7 @@ while True:
 
                 prediction = np.array([[[x,y]] for t,x,y in ball.lPos_prediction], np.int32)
                 cv2.polylines(newframe, [prediction], False, (0, 255, 0), 4)
+                #green color -> prediction on the path the ball might take
 
         cv2.circle(newframe,
                    tuple(map(int, ball.body.position)),
@@ -630,6 +639,8 @@ while True:
                    -1)
         
         font_scale = cv2.getFontScaleFromHeight(cv2.FONT_HERSHEY_SIMPLEX, 30, 3) 
+
+        # displays the ID of the ball
         cv2.putText(newframe,
                     "ID:" + chr(ord('A') + ball.id),
                     (int(x + Ball.radius*2.2), y + 33),
@@ -638,6 +649,8 @@ while True:
                     (255, 255, 255),
                     2,
                     cv2.LINE_AA)
+        
+        # displays velocity of the ball
         cv2.putText(newframe,
                     "V=" + str(round(v)),
                     (int(x + Ball.radius*2.2), y-3),
@@ -657,7 +670,7 @@ while True:
 
     
 
-    
+    #displays frames per second
     cv2.putText(newframe,
                 "FPS: " + str(int(1/(time.time() - t_frame))),
                 (50, 50),
@@ -697,6 +710,7 @@ while True:
     cv2.imshow('Billard', newframe)
     
     #k = cv2.waitKey(int((time.time() - t_frame)*1000)) & 0xff
+    # program waits for a key press, if key pressed is 27 (ascii for esc key) program breaks out of the loop and terminates
     k = cv2.waitKey(1) & 0xff
     if k == 27:
         break
